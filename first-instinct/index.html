@@ -9,17 +9,20 @@
     <meta property="og:description" content="在有点像梦的场景里，选你下意识会做的那件事。结果是一份关于本能反应的想象练习，适合留给自己轻轻读一遍。">
     <title>你的潜意识人格</title>
     <link rel="icon" href="data:,">
-    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="../style.css?v=2">
     <script defer src="./data.js"></script>
     <script defer src="../scoring.js"></script>
-    <script defer src="../quiz.js"></script>
+    <script defer src="../quiz.js?v=2"></script>
   </head>
   <body data-theme="dream">
     
     
     <header class="shell top">
       <a class="wordmark" href="../index.html"><span class="mark" aria-hidden="true">答</span>生活有答</a>
-      <a class="quiet" href="../index.html">全部测试</a>
+      <nav class="top-links" aria-label="测试导航">
+        <a class="quiet" href="../index.html">全部测试</a>
+        <a class="quiet" href="https://www.16personalities.com/ch/人格测试" target="_blank" rel="noopener noreferrer">MBTI 风格测试</a>
+      </nav>
     </header>
     <main class="shell">
       <section id="home" class="screen cover" aria-labelledby="cover-title">
@@ -28,15 +31,22 @@
           <h1 id="cover-title" tabindex="-1">你的潜意识人格</h1>
           <p class="setting">让第一反应先说一句</p>
           <p class="intro">在有点像梦的场景里，选你下意识会做的那件事。结果是一份关于本能反应的想象练习，适合留给自己轻轻读一遍。</p>
+          <fieldset class="quiz-modes" id="quiz-modes">
+            <legend>选择版本</legend>
+            <div class="mode-options">
+              <label class="mode-choice"><input type="radio" name="version" value="quick" checked><span><strong>10 题速测</strong><small>约 1–2 分钟</small></span></label>
+              <label class="mode-choice"><input type="radio" name="version" value="full"><span><strong>40 题完整版</strong><small>约 5–7 分钟</small></span></label>
+            </div>
+          </fieldset>
           <button type="button" class="button primary" id="start">走进四十个片段</button>
-          <p class="facts">40 道单选 · 约 5–7 分钟 · 8 种结果</p>
+          <p class="facts">8 种结果 · 可保存分享图</p>
           <noscript><p>请在浏览器中启用 JavaScript 以开始测试。</p></noscript>
         </div>
         <div class="cover-visual"><img src="../media/first-instinct.jpg" id="cover-art" alt="" fetchpriority="high"></div>
       </section>
       <section id="game" class="screen game" aria-label="逐题作答" hidden>
         <div class="game-head"><button class="quiet" type="button" id="cover-back">返回首页</button><p id="game-count"></p></div>
-        <div class="track" id="progress" role="progressbar" aria-label="答题进度" aria-valuemin="0" aria-valuemax="40" aria-valuenow="0"><div id="progress-fill"></div></div>
+        <div class="track" id="progress" role="progressbar" aria-label="答题进度" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0"><div id="progress-fill"></div></div>
         <form class="question-card" id="question-form">
           <div id="question-content">
             <p id="question-meta" class="kicker"></p>
@@ -50,6 +60,7 @@
         </form>
       </section>
       <section id="result" class="screen result" aria-labelledby="result-heading" hidden>
+        <p class="kicker result-mode" id="result-mode"></p>
         <h2 id="result-heading" tabindex="-1">第一个起身的你</h2>
         <div class="result-grid">
           <div>
@@ -67,6 +78,7 @@
               <button type="button" class="button primary" id="download">保存分享图</button>
               <button type="button" class="button secondary" id="restart">重新测试</button>
             </div>
+            <button type="button" class="quiet switch-mode" id="choose-version">切换测试版本</button>
             <p id="download-status" role="status" class="download-status"></p>
           </div>
           <div class="result-notes">

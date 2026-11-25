@@ -2,14 +2,19 @@
 
 const el = (id) => document.getElementById(id);
 const steps = [el("home"), el("game"), el("result")];
-const total = QUIZ.questions.length;
 const options = el("options");
 const next = el("next");
 const previous = el("previous");
 const download = el("download");
 const status = el("download-status");
-let answers = new Array(total).fill(null);
-let cursor = 0;
+const modePicker = el("quiz-modes");
+const bank = QUIZ.questions.map((question, index) => ({ ...question, section: QUIZ.sections[Math.floor(index / 8)] }));
+const makeSession = (questions, label) => ({ questions, label, answers: new Array(questions.length).fill(null), cursor: 0 });
+const sessions = {
+  quick: makeSession(bank.filter((_, index) => index % 4 === 0), "10 题速测"),
+  full: makeSession(bank, "40 题完整版"),
+};
+let session = sessions[modePicker?.querySelector("input:checked")?.value ?? "full"];
 let finalProfile = null;
 let pendingDownload = false;
 
@@ -20,16 +25,21 @@ function show(id, focus) {
 }
 
 function updateProgress() {
+  const { answers, cursor, questions } = session;
+  const total = questions.length;
   const count = answers.filter((answer) => answer !== null).length;
   el("game-count").textContent = `已答 ${count} / ${total} 题`;
+  el("progress").setAttribute("aria-valuemax", String(total));
   el("progress").setAttribute("aria-valuenow", String(count));
   el("progress-fill").style.width = `${(count / total) * 100}%`;
   next.disabled = answers[cursor] === null;
 }
 
 function renderQuestion(animate = true) {
-  const current = QUIZ.questions[cursor];
-  el("question-meta").textContent = `第 ${cursor + 1} / ${total} 题 · ${QUIZ.sections[Math.floor(cursor / 8)]}`;
+  const { answers, cursor, questions } = session;
+  const total = questions.length;
+  const current = questions[cursor];
+  el("question-meta").textContent = `第 ${cursor + 1} / ${total} 题 · ${current.section}`;
   el("question").textContent = current.prompt;
 
   const choices = current.options.map(({ text }, index) => {
@@ -72,8 +82,9 @@ function enterQuiz() {
 }
 
 function renderResult() {
-  const { profile, counts } = QuizScoring.score(QUIZ.questions, answers);
+  const { profile, counts } = QuizScoring.score(session.questions, session.answers);
   finalProfile = QUIZ.profiles[profile];
+  if (el("result-mode")) el("result-mode").textContent = session.label;
   el("result-name").textContent = finalProfile.name;
   for (const key of ["identity", "quote", "reason", "strength", "extra"]) el(key).textContent = finalProfile[key];
   const descriptions = QUIZ.dimensions.map((name, index) => {
@@ -161,6 +172,7 @@ function renderShareImage(profile, artwork) {
 
 async function saveShareImage() {
   const profile = finalProfile;
+  const source = session;
   if (!profile || pendingDownload) return;
   pendingDownload = true;
   download.disabled = true;
@@ -172,7 +184,7 @@ async function saveShareImage() {
     const canvas = renderShareImage(profile, artwork);
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
     if (!blob) throw new Error("图片生成失败。");
-    if (profile !== finalProfile) return;
+    if (profile !== finalProfile || session !== source) return;
     const href = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = href;
@@ -183,42 +195,55 @@ async function saveShareImage() {
     setTimeout(() => URL.revokeObjectURL(href), 60000);
     status.textContent = "分享图已生成，请查看浏览器下载。";
   } catch {
-    if (profile === finalProfile) status.textContent = "暂时无法保存图片，可以截取上方结果卡。";
+    if (profile === finalProfile && session === source) status.textContent = "暂时无法保存图片，可以截取上方结果卡。";
   } finally {
     pendingDownload = false;
     download.disabled = false;
   }
 }
 
-el("start").addEventListener("click", enterQuiz);
-el("cover-back").addEventListener("click", () => {
-  el("start").textContent = answers.some((answer) => answer !== null) ? "继续我的测试" : QUIZ.action;
+function updateStartLabel() {
+  el("start").textContent = session.answers.some((answer) => answer !== null) ? "继续我的测试" : QUIZ.action;
+}
+
+function returnToCover() {
+  updateStartLabel();
   show("home", el("cover-title"));
+}
+
+modePicker?.addEventListener("change", (event) => {
+  if (event.target.name !== "version") return;
+  session = sessions[event.target.value];
+  finalProfile = null;
+  updateStartLabel();
 });
+el("start").addEventListener("click", enterQuiz);
+el("cover-back").addEventListener("click", returnToCover);
+el("choose-version")?.addEventListener("click", returnToCover);
 options.addEventListener("change", (event) => {
   if (event.target.name !== "answer" || !event.target.checked) return;
-  answers[cursor] = Number(event.target.value);
+  session.answers[session.cursor] = Number(event.target.value);
   updateProgress();
 });
 previous.addEventListener("click", () => {
-  if (!cursor) return;
-  cursor -= 1;
+  if (!session.cursor) return;
+  session.cursor -= 1;
   renderQuestion();
 });
 el("question-form").addEventListener("submit", (event) => {
   event.preventDefault();
-  if (answers[cursor] === null) return;
-  if (cursor === total - 1) {
+  if (session.answers[session.cursor] === null) return;
+  if (session.cursor === session.questions.length - 1) {
     renderResult();
   } else {
-    cursor += 1;
+    session.cursor += 1;
     renderQuestion();
   }
 });
 download.addEventListener("click", saveShareImage);
 el("restart").addEventListener("click", () => {
-  answers = new Array(total).fill(null);
-  cursor = 0;
+  session.answers.fill(null);
+  session.cursor = 0;
   finalProfile = null;
   enterQuiz();
 });
