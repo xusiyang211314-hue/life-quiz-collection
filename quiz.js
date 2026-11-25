@@ -10,8 +10,9 @@ const status = el("download-status");
 const modePicker = el("quiz-modes");
 const bank = QUIZ.questions.map((question, index) => ({ ...question, section: QUIZ.sections[Math.floor(index / 8)] }));
 const makeSession = (questions, label) => ({ questions, label, answers: new Array(questions.length).fill(null), cursor: 0 });
+const quickBank = QUIZ.quickIndices ? QUIZ.quickIndices.map((index) => bank[index]) : bank.filter((_, index) => index % 4 === 0);
 const sessions = {
-  quick: makeSession(bank.filter((_, index) => index % 4 === 0), "10 题速测"),
+  quick: makeSession(quickBank, "10 题速测"),
   full: makeSession(bank, "40 题完整版"),
 };
 let session = sessions[modePicker?.querySelector("input:checked")?.value ?? "full"];
@@ -82,17 +83,28 @@ function enterQuiz() {
 }
 
 function renderResult() {
-  const { profile, counts } = QuizScoring.score(session.questions, session.answers);
-  finalProfile = QUIZ.profiles[profile];
+  let tendencies;
+  if (QUIZ.kind === "four-axis") {
+    const { code, balances } = QuizScoring.scoreType(session.questions, session.answers, QUIZ.axes);
+    finalProfile = QUIZ.profiles.find(({ key }) => key === code);
+    tendencies = QUIZ.axes.map(({ label, letters, names }, index) => {
+      const { left, right, tied } = balances[index];
+      return { label, text: `${names[0]} ${letters[0]} ${left} · ${names[1]} ${letters[1]} ${right}${tied ? "（平分）" : ""}` };
+    });
+  } else {
+    const { profile, counts } = QuizScoring.score(session.questions, session.answers);
+    finalProfile = QUIZ.profiles[profile];
+    tendencies = QUIZ.dimensions.map((label, index) => ({ label, text: `${counts[index]} 次` }));
+  }
   if (el("result-mode")) el("result-mode").textContent = session.label;
   el("result-name").textContent = finalProfile.name;
   for (const key of ["identity", "quote", "reason", "strength", "extra"]) el(key).textContent = finalProfile[key];
-  const descriptions = QUIZ.dimensions.map((name, index) => {
+  const descriptions = tendencies.map(({ label: name, text }) => {
     const item = document.createElement("div");
     const label = document.createElement("dt");
     const count = document.createElement("dd");
     label.textContent = name;
-    count.textContent = `${counts[index]} 次`;
+    count.textContent = text;
     item.append(label, count);
     return item;
   });
